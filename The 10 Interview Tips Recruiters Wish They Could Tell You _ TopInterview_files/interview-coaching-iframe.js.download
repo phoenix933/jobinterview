@@ -1,0 +1,242 @@
+
+function bookCoachClick(e) {
+	let p1 = document.getElementById('part_1');
+	p1.style.display = 'none';
+	let p2 = document.getElementById('part_2');
+	p2.style.display = 'block';
+
+	if (getWidgetWidth() == 300 || getWidgetWidth() >= 550) {
+		// 300 x 250 widget, or 720 x 100 widget
+		setIframeHeight(250);
+	} else {
+		// auto-adjust height for mobile phones
+		readjustHeight();
+	}
+}
+//document.getElementById('bookCoach').addEventListener('click', bookCoachClick, false);
+
+function callMeAsapClick(e) {
+	let p1 = document.getElementById('part_2');
+	p1.style.display = 'none';
+	let p2 = document.getElementById('part_4');
+	p2.style.display = 'block';
+	let p3 = document.getElementById('callMeNow');
+	p3.value = '1';
+	
+	if (getWidgetWidth() == 300 || getWidgetWidth() >= 550) {
+		// 300 x 250 widget, or 720 x 100 widget
+		setIframeHeight(250);
+	} else {
+		// auto-adjust height for mobile phones
+		readjustHeight();
+	}
+}
+document.getElementById('callMeAsap').addEventListener('click', callMeAsapClick, false);
+
+function chooseDateTime() {
+	let p1 = document.getElementById('part_2');
+	p1.style.display = 'none';
+	let p2 = document.getElementById('part_3');
+	p2.style.display = 'block';
+	let p3 = document.getElementById('callMeNow');
+	p3.value = '0';
+	if (getWidgetWidth() == 300) {
+		// show the date chooser mobile dropdown instead 
+		let d1 = document.getElementById('dateChooser');
+		d1.style.display = 'none';
+		let d2 = document.getElementById('dateChooserMobile');
+		d2.style.display = 'block';
+	} else if (getWidgetWidth() <= 550) {
+		readjustHeight();
+	}
+}
+document.getElementById('chooseDateTime').addEventListener('click', chooseDateTime, false);
+
+function restartFlow(e) {
+	// let them go back and restart all over again
+	let p1 = document.getElementById('part_4');
+	p1.style.display = 'none';
+	let p2 = document.getElementById('part_3');
+	p2.style.display = 'none';
+	let p3 = document.getElementById('part_2');
+	p3.style.display = 'block';
+	// reset name, phone, email, and error
+	let i1 = document.querySelector('input[name="name"]');
+	i1.value = '';
+	let i2 = document.querySelector('input[name="phone"]');
+	i2.value = '';
+	let i3 = document.querySelector('input[name="email"]');
+	i3.value = '';
+	let i4 = document.getElementById('errorField');
+	i4.innerHTML = '&nbsp;';
+	if (getWidgetWidth() <= 550 && getWidgetWidth() != 300) {
+		readjustHeight();
+	}
+}
+document.getElementById('goBack2').addEventListener('click', restartFlow, false);
+document.getElementById('goBack1').addEventListener('click', restartFlow, false);
+
+function confirmDateTime() {
+	let cd = document.getElementById('confirmDate');
+	if (cd.classList.contains("disabled") == false) {
+		// find the selected 'active' date
+		let d = document.getElementsByClassName('dateButton');
+		for(let i = 0; i < d.length; i++) {
+			if (d[i].classList.contains("active")) {
+				var selectedDate = d[i].getAttribute('data-val');
+				break;
+			}
+		}
+		let ts = document.getElementById('timeSelector');
+		let selectedTime = ts.value;
+		// write confirmed date/time to input field
+		let it = document.getElementById('interviewTime');
+		it.value = selectedDate+' '+selectedTime;
+		//show the next step
+		let p1 = document.getElementById('part_3');
+		p1.style.display = 'none';
+		let p2 = document.getElementById('part_4');
+		p2.style.display = 'block';
+		if (getWidgetWidth() <= 550 && getWidgetWidth() != 300) {
+			readjustHeight();
+		}
+	}
+}
+document.getElementById('confirmDate').addEventListener('click', confirmDateTime, false);
+
+
+// select and hilite a date
+function selectDate(ind) {
+	//deselect all date buttons
+	let d = document.getElementsByClassName('dateButton');
+	for(let i = 0; i < d.length; i++) {
+		d[i].classList.remove("active");
+	}
+	//mark the index as active
+	d[ind].classList.add("active");
+
+	//select the 0 index - to force them to choose
+	let ts = document.getElementById('timeSelector');
+	ts.selectedIndex = "0";
+	ts.disabled = false;
+	//hide the est info
+	let est = document.getElementById('estInfo');
+	est.innerHTML = 'ALL TIMES ARE LOCAL (EST)';
+
+	//see if today's date is selected
+	let currentDate = new Date();
+	let day = parseInt(currentDate.getUTCDate());
+	let month = parseInt(currentDate.getUTCMonth()) + 1; //Be careful! January is 0 not 1
+	let dateSplit = d[ind].getAttribute('data-val').split('-');
+	// if today is selected, disable any time less than 1 hour from now
+	if (parseInt(dateSplit[1]) == month && parseInt(dateSplit[2]) == day) {
+		// add 1 hour to the current time
+		currentDate.setHours(currentDate.getHours()+1);
+		// disable any time option less than current time
+		for (let i = 0; i < ts.options.length; i++) {
+			let timeSplit = ts.options[i].value.split(':');
+			if (timeSplit.length > 1) {
+				let hour = parseInt(timeSplit[0]);
+				let minute = parseInt(timeSplit[1]);
+				if (hour < parseInt(currentDate.getUTCHours())) {
+					ts.options[i].disabled = true;
+				} else if (hour == parseInt(currentDate.getUTCHours()) && minute < parseInt(currentDate.getUTCMinutes())) {
+					ts.options[i].disabled = true;
+				}
+			}
+		}
+	} else {
+		// current day is not selected, enable all times
+		for(let i = 0; i < ts.options.length; i++) {
+			if (i != 0) {
+				ts.options[i].disabled = false;
+			}
+		};
+	}
+	
+	//disable the confirm button
+	let dc = document.getElementById('confirmDate');
+	dc.classList.add("disabled");
+}
+
+// when a date is selected from the date mobile dropdown
+function selectDateMobile() {
+	let ds = document.getElementById('dateSelectorMobile');
+	selectDate(ds.value);
+}
+
+// when a time is selected from the dropdown
+function selectTime() {
+	//enable the confirm button
+	let dc = document.getElementById('confirmDate');
+	dc.classList.remove("disabled");
+}
+
+// move the date list right
+function moveRight() {
+	let d = document.getElementsByClassName('dateButton');
+	for(let i = 0; i < d.length; i++) {
+		let ind = d[i].getAttribute('data-ind')
+		if (ind < 5) {
+			d[i].classList.add("hiddenDate");
+		} else {
+			d[i].classList.remove("hiddenDate");
+		}
+	}
+}
+document.getElementById('moveRightDate').addEventListener('click', moveRight, false);
+
+// move the date list left
+function moveLeft() {
+	let d = document.getElementsByClassName('dateButton');
+	for(let i = 0; i < d.length; i++) {
+		let ind = d[i].getAttribute('data-ind')
+		if (ind >= 5) {
+			d[i].classList.add("hiddenDate");
+		} else {
+			d[i].classList.remove("hiddenDate");
+		}
+	}
+}
+document.getElementById('moveLeftDate').addEventListener('click', moveLeft, false);
+
+function setIframeHeight(h) {
+	var msg = {
+		"action": "setTopInterviewIFrameHeight",
+		"newHeight": h+"px"
+	};
+	postMessageToParent(msg);
+}
+
+function getWidgetWidth() {
+	// get the width of this widget, to see if it is mobile
+	let body = document.body;
+	let html = document.documentElement;
+	return Math.max( body.scrollWidth, body.offsetWidth, html.clientWidth, html.scrollWidth, html.offsetWidth );
+}
+
+function readjustHeight() {
+	let body = document.body;
+    let html = document.documentElement;
+	let newHeight = Math.max( body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight );
+	setIframeHeight(newHeight);
+}
+
+// post message to iframe parent
+function postMessageToParent(msg) {
+	//console.log('posting msg to parent window! topdomain='+siteHostName);
+	window.parent.postMessage(msg, siteHostName);
+}
+
+// receive incoming message from iframe parent 
+function handleMessageFromParent(e) {
+	// console.log('handleMessageFromParent '+e.data.action);
+	// only accept messages from the siteHostName
+	if (e.origin.indexOf(siteHostName) !== -1) {
+		if (e.data.action == "resizeIframeHeight") {
+			readjustHeight();
+		}
+	}
+}
+// listen to messages from the iframe parent
+window.addEventListener('message', handleMessageFromParent, false);

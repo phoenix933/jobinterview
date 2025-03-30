@@ -1,0 +1,601 @@
+
+// RESIZE PARENT IFRAME DYNAMICALLY
+try {
+    if (window.pcrframeeventlistenerloaded != true) {
+        var eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
+        var eventer = window[eventMethod];
+        var messageEvent = eventMethod == "attachEvent" ? "onmessage" : "message";
+        eventer(messageEvent, function (e) { processEvent(e.data); }, false);
+        window.pcrframeeventlistenerloaded = true;
+    }
+} catch (e) {
+    //no event handling
+}
+pcrholdscrolltop = -1;
+try {
+    var fr = document.getElementById('pcrframe');
+    window.addEventListener('touchend', function () {
+        //window.pcrholdscrolltop = window.pcrScrollTop();
+    });
+} catch (e) {
+}
+
+window.pcrScrollTop = function (newValue) {
+    if (newValue == null) {
+        if (document.body.scrollTop != null && document.body.scrollTop > 0) { return document.body.scrollTop; }
+        if (document.documentElement.scrollTop != null && document.documentElement.scrollTop > 0) { return document.documentElement.scrollTop; }
+        return 0;
+    } else {
+        try { document.body.scrollTop = newValue; } catch (e) { }
+        try { document.documentElement.scrollTop = newValue; } catch (e) { }
+    }
+};
+
+function getOffsetTop(element) {
+    var yPosition = 0;
+    while (element) {
+        yPosition += (element.offsetTop);
+        element = element.offsetParent;
+    }
+    return yPosition;
+}
+
+function processEvent(data) {
+    if (typeof (data) != 'string') { return false; }
+    if (data.indexOf('||') < 0) { return false; }
+    var vars = data.split('||');
+    var scrolloptions = '';
+
+    if (vars[0] == 'RESIZE') {
+        try { window.pcrframeoptions = JSON.parse(vars[3]); } catch (e) { window.pcrframeoptions = {}; }
+        if (parseInt(vars[1]) > 0) { document.getElementById('pcrframe').style.width = vars[1] + '%'; }
+        document.getElementById('pcrframe').style.height = vars[2] + 'px';
+
+        // START CHROME 108 OVERRIDE (Limit iframe height to max screen height)
+        var chrometest = navigator.userAgent.match(/chrom(?:e|ium)\/(\d+)\./i);
+		if (chrometest) {
+			var chrome108 = (parseInt(chrometest[1], 10) === 108);
+		}
+		try {
+			var istopframe = (window.self !== window.top);
+		} catch (e) {
+			return true;
+		}
+		if (chrome108 === true && istopframe === false) {
+		    var screenHeight = window.screen.height * window.devicePixelRatio;
+		    console.log(screenHeight);
+			document.getElementById('pcrframe').style.maxHeight = screenHeight + 'px';
+		}
+        // END CHROME 108 OVERRIDE
+
+        try { scrolloptions = vars[4]; } catch (e) { scrolloptions = ''; }
+
+        //disable scroll
+        if (scrolloptions == 'NOSCROLL' || pcrframeoptions.noscroll == 'NOSCROLL') {
+            return;
+        }
+
+        //reset top on load
+        if (window.scrollInit == undefined) {
+            window.setTimeout(function () {
+                window.scrollInit = true;
+            }, 3000);
+            return;
+        }
+        var t = -1;
+        try { t = getOffsetTop(document.getElementById('pcrframe')); } catch (e) { }
+        if (t > 0) { window.pcrScrollTop(t - 100); }
+
+    }
+
+    if (vars[0] == 'NAVIGATE') {
+        var sw = 1024;
+        try { sw = screen.width; } catch (e) { }
+        try {
+            if (sw < 400) {
+                var wd = sw - 10;
+                var d = new pcrdialog({ url: vars[1], title: vars[2], width: wd.toString(), height: '90%' });
+            } else {
+                var d = new pcrdialog({ url: vars[1], title: vars[2], width: '80%', height: '80%' });
+            }
+        } catch (e) {
+            //navigate in frame
+            document.getElementById('pcrframe').src = vars[1];
+        }
+    }
+
+    if (vars[0] == 'LOGIN') {
+        var sw = 1024;
+        try { sw = screen.width; } catch (e) { }
+        var dw = '500';
+        if (sw < 400) { var dw = '97%'; }
+        try {
+            var d = new pcrdialog({ url: vars[1], title: vars[2], width: dw, height: '250', top: '15%' });
+        } catch (e) {
+            //navigate in frame
+            document.getElementById('pcrframe').src = vars[1];
+        }
+    }
+
+    if (vars[0] == 'HIDECLOSE') {
+        document.getElementById('pcrdialogclose').style.visibility = 'hidden';
+    }
+
+    if (vars[0] == 'RELOAD') {
+        document.getElementById('pcrframe').src = vars[1];
+    }
+
+    if (vars[0] == 'CLOSE') {
+        var href = vars[1];
+        if (href != '') { document.getElementById('pcrframe').src = href; }
+        top.pcrcloseiframe();
+    }
+
+    if (vars[0] == 'SCROLL') {
+        if (window.pcrholdscroll != null) {
+            window.pcrScrollTop(window.pcrholdscroll);
+        }
+    }
+    if (vars[0] == 'SCROLLTOP') {
+        jQuery('html, body').animate({
+            scrollTop: 0
+        }, 'slow');
+        return false;
+    }
+    if (vars[0] == 'SCROLLBOTTOM') {
+        jQuery('html, body').animate({
+            scrollTop: jQuery(document).height()
+        }, 'slow');
+        return false;
+    }
+
+    if (vars[0] == 'CSS') {
+        if (document.getElementById('pcrstyle') == null) {
+            try {
+                var css = document.createElement('style');
+                css.id = 'pcrstyle';
+                css.type = 'text/css';
+                css.innerHTML = vars[1];
+                document.body.appendChild(css);
+            } catch (e) {
+            }
+        }
+    }
+    if (vars[0] == 'REDIRECT') {
+        document.location.href = vars[1];
+    }
+
+    if (vars[0] == 'UPDATEGRAPH') {
+        document.title = vars[1];
+    }
+
+    if (vars[0] == 'ADDBODYCLASS') {
+        if (document.body.className.indexOf(vars[1]) == -1) {
+            document.body.className = document.body.className + ' ' + vars[1];
+        }
+    }
+
+    if (vars[0] == 'REMOVEBODYCLASS') {
+        if (document.body.className.indexOf(vars[1]) > -1) {
+            document.body.className = document.body.className.replace(' ' + vars[1], '').trim();
+        }
+    }
+
+    if (vars[0] == 'OVERFLOW') {
+        if (vars[1] == 'HIDE') {
+            document.getElementById('pcrframe').setAttribute('scrolling', 'no');
+        } else {
+            document.getElementById('pcrframe').setAttribute('scrolling', 'yes');
+        }
+    }
+}
+
+//split params into values
+function getPair(params) {
+    var args = params.split('=');
+    return { "name": args[0], "value": decodeURIComponent(args[1]), "raw": params };
+}
+
+
+// PARSE PARENT URL TO DETERMINE FRAME CONTENT
+function pcrframeurl() {
+    var pcrframe = document.getElementById('pcrframe');
+    var exepath = '';
+    var a = null;
+    var urltype = 0;
+    var querystr = '';
+    var m = null;
+    var ref = '';
+
+    if (pcrframe == null) { return; }
+    try {
+        var fullurl = document.location.href;
+        var qs = fullurl.substring(fullurl.indexOf('?') + 1);
+
+        //realign JOBSHARE url
+        if (qs.substr(0, 8).toUpperCase() === 'JOBSHARE') {
+            qs = 't=14&b=' + qs.substr(8).toUpperCase() + '&action=detail';
+        }
+
+        var urltype = -1;
+        var params = qs.split('&');
+        var qsA = [];
+
+        //get url params        
+        for (var i = 0; i < params.length; i++) {
+            var pair = getPair(params[i]);
+            if (pair.name == 't') {
+                //eat this pair
+                urltype = parseInt(pair.value);
+            } else {
+                qsA.push(pair.raw);
+            }
+        }
+
+        //build query string
+        querystr = qsA.join('&');
+
+        switch (parseInt(urltype)) {
+            case 1:
+                exepath = '/pcrbin/reg1.aspx'; break;
+            case 2:
+                exepath = '/pcrbin/regmenu.aspx'; break;
+            case 3:
+                exepath = '/pcrbin/regfirst.aspx'; break;
+            case 4:
+                exepath = '/pcrbin/apply.aspx'; break;
+            case 5:
+                exepath = '/pcrbin/reg5.aspx'; break;
+            case 6:
+                exepath = '/pcrbin/reg6.aspx'; break;
+            case 7:
+                exepath = '/pcrbin/reg7.aspx'; break;
+            case 8:
+                exepath = '/pcrbin/workhist.aspx'; break;
+            case 9:
+                exepath = '/pcrbin/temphrs.aspx'; break;
+            case 10:
+                exepath = '/pcrbin/employer.aspx'; break;
+            case 11:
+                exepath = '/pcrbin/emplref.aspx'; break;
+            case 12:
+                exepath = '/pcrbin/letter.aspx'; break;
+            case 14:
+                exepath = '/pcrbin/jobboard.aspx'; break;
+        }
+
+        var hostname = pcrframe.getAttribute('host');
+        var initurl = pcrframe.getAttribute('src');
+
+        if (hostname.match(/pcrbin/i) != null) {
+            initurl = hostname;
+            m = /(.*?)(\/pcrbin\/.*)/i.exec(hostname);
+            hostname = m[1];
+        }
+
+        if (hostname.match(/pcrimg/i) != null) {
+            initurl = hostname;
+            m = /(.*?)(\/pcrimg\/.*)/i.exec(hostname);
+            hostname = m[1];
+        }
+
+        var boutique = pcrframe.getAttribute('boutique');
+
+        if (hostname == null) {
+            hostname = 'https://www2.pcrecruiter.net';
+        }
+        if (hostname == 'about:blank') {
+            hostname = 'https://host.pcrecruiter.net';
+        }
+        if (boutique == null || document.location.protocol == 'https:') {
+            boutique = hostname;
+        }
+
+        //force SSL for most screens
+        a = document.location.href.match(/pcrecruiter.net/i);
+        if (a != null) {
+            if (urltype == 1 || urltype == 3 || urltype == 4 || urltype == 9 || urltype == 10 || urltype == 11) { hostname = hostname.replace(/http\:/i, 'https\:'); }
+        }
+
+        //make all frames secure if parent is secure
+        if (document.location.protocol == 'https:') {
+            hostname = hostname.replace(/http\:/i, 'https\:');
+        } else {
+            //allow boutique for non-hhtp connections
+            if (urltype == 5 || urltype == 2 || exepath == '') {
+                initurl = initurl.replace(hostname, boutique);
+                hostname = boutique;
+            }
+        }
+
+        try {
+            var refurl = document.referrer;
+            var anchor = document.createElement("a");
+            anchor.href = refurl;
+
+            ref = '&referrer=' + encodeURIComponent(anchor.host);
+            if (querystr.indexOf('&referrer') > -1) {
+                ref = '';
+            }
+        } catch (e) {
+            ref = '';
+        }
+
+        if (exepath == '') {
+            var frameurl = initurl;
+        } else {
+            var frameurl = hostname + exepath + '?' + querystr + ref;
+        }
+
+        frameurl = frameurl.replace(/\+/ig, '%2B');
+
+        // account for double-encoding of URLs
+        if (frameurl.indexOf('%25') > -1) {
+            frameurl = frameurl.replace(/\%25/ig, '%');
+        }
+
+        if (pcrframe.src != frameurl) {
+            //see if analytics is enabled
+            var ga_enabled = pcrframe.hasAttribute('analytics');
+
+            //google analytics
+            if (ga_enabled) {
+                //open frame no matter what after three seconds
+                var failsafe = window.setTimeout(function () {
+                    pcrframe.src = frameurl;
+                    pcrframe.onload = '';
+                }, 4000);
+
+                //wait until we get clientid before opening iFrame
+                var waitobj = window.setInterval(function () {
+                    var clientId = undefined;
+                    try {
+                        clientId = document.cookie.match(/_ga=(.+?);/)[1].split('.').slice(-2).join(".");
+                    } catch (e) { }
+
+                    //console.log(clientId);
+                    if (clientId) {
+                        //clear timeouts
+                        window.clearTimeout(failsafe);
+                        window.clearInterval(waitobj);
+                        //open iframe
+                        pcrframe.src = frameurl + '&_ga=' + clientId;
+                        pcrframe.onload = '';
+                    }
+                }, 10);
+
+            } else {
+                //not using google analytics
+                pcrframe.src = frameurl;
+                pcrframe.onload = '';
+            }
+
+        }
+
+    } catch (e) {
+        //just load the host frame
+        if (pcrframe.src != pcrframe.getAttribute('host')) { pcrframe.src = pcrframe.getAttribute('host'); pcrframe.onload = ''; }
+    }
+    try {
+        pcrframeLoading();
+    }
+    catch (e) {
+    }
+}
+
+
+//dialog creation class
+var pcrdialog = function (options) {
+
+    var self = this;
+    self.options = {};
+
+    self.scrollLeft = function () {
+        if (document.body.scrollLeft != null && document.body.scrollLeft > 0) { return document.body.scrollLeft; }
+        if (document.documentElement.scrollLeft != null && document.documentElement.scrollLeft > 0) { return document.documentElement.scrollLeft; }
+        return 0;
+    };
+
+    self.scrollTop = function (newValue) {
+        if (newValue == null) {
+            if (document.body.scrollTop != null && document.body.scrollTop > 0) { return document.body.scrollTop; }
+            if (document.documentElement.scrollTop != null && document.documentElement.scrollTop > 0) { return document.documentElement.scrollTop; }
+            return 0;
+        } else {
+            try { document.body.scrollTop = newValue; } catch (e) { }
+            try { document.documentElement.scrollTop = newValue; } catch (e) { }
+        }
+    };
+
+    self.scrollHeight = function () {
+        var win = self.winheight();
+        var s1 = document.body.scrollHeight + 10;
+        var s2 = document.documentElement.scrollHeight + 10;
+        var s3 = win.height;
+        return Math.max(s1, s2, s3);
+    };
+
+    self.overlayHeight = function () {
+        return self.scrollHeight();
+    };
+
+    self.ismobile = function () {
+        var sw = 1024;
+        try { sw = screen.width; } catch (e) { }
+        if (sw < 400) { return true; } else { return false; }
+    };
+
+    self.overlayWidth = function () {
+        var win = self.winheight();
+        var ow = document.body.scrollWidth;
+        if (win.width > ow) { ow = win.width; }
+        return ow;
+    };
+
+    self.sizeMe = function (a, b, f, self) {
+
+        var options = self.options;
+        var win = self.winheight();
+        var mleft = 0;
+        var mtop = 0;
+        var recenter = true;
+
+        win.scrollLeft = self.scrollLeft();
+        win.scrollTop = self.scrollTop();
+
+        if (top.pcrwin != null) {
+            if (top.pcrwin.height == win.height && top.pcrwin.width == win.width && top.pcrwin.scrollLeft == win.scrollLeft && top.pcrwin.scrollTop == win.scrollTop) { return; }
+        }
+
+
+
+        var wd = parseInt(win.width * 0.9);
+        var ht = win.height * 0.8;
+
+        if (options.width == null || options.height == null) {
+            options.width = '90%';
+            options.height = '80%';
+        }
+
+        if (options.width.indexOf('%') > -1) {
+            f.style.width = (parseInt(options.width) * 0.01 * win.width) + 'px';
+        } else {
+            f.style.width = parseInt(options.width) + 'px';
+        }
+
+        if (options.height.indexOf('%') > -1) {
+            f.style.height = (parseInt(options.height) * 0.01 * win.height) + 'px';
+        } else {
+            f.style.height = parseInt(options.height) + 'px';
+        }
+
+        if (recenter == false) {
+            b.style.marginTop = '100px';
+            b.style.marginLeft = '100px';
+
+        } else {
+            if (options.left == null && options.top == null) {
+                mtop = (win.height - parseInt(f.style.height) - 60) / 2;
+                mleft = self.scrollLeft() + (win.width - parseInt(f.style.width) - 36) / 2;
+                if (mtop < 0) { mtop = 0; }
+                if (mleft < 0) { mleft = 0; }
+                if (self.ismobile()) { mleft = 0; }
+
+                if (!a.drawn) { b.style.marginTop = self.scrollTop() + mtop + 'px'; }
+                b.style.marginLeft = mleft + 'px';
+
+            } else {
+                if (options.top == null) { var origtop = ''; } else { origtop = options.top.toString(); }
+                if (options.left == null) { var origleft = ''; } else { origleft = options.left.toString(); }
+
+                mtop = parseInt(options.top);
+
+                if (options.left == null) {
+                    mleft = self.scrollLeft() + (win.width - parseInt(f.style.width) - 36) / 2;
+                } else {
+                    mleft = parseInt(options.left);
+                }
+
+                if (mtop < 0) { mtop = 0; }
+                if (mleft < 0) { mleft = 0; }
+                if (self.ismobile()) { mleft = 0; }
+
+                if (!a.drawn) {
+                    if (origtop.indexOf('%') > -1) {
+                        b.style.marginTop = self.scrollTop() + parseInt(options.top) * 0.01 * win.height + 'px';
+                    } else {
+
+                        b.style.marginTop = self.scrollTop() + mtop + 'px';
+                    }
+                }
+
+                if (origleft.indexOf('%') > -1) {
+                    if (!a.drawn) { b.style.marginLeft = parseInt(options.left) * win.left * 0.01 + 'px'; }
+                } else {
+                    b.style.marginLeft = mleft + 'px';
+                }
+
+            }
+        }
+        a.style.height = '10px';
+        a.style.height = self.overlayHeight() + 'px';
+        a.style.width = self.overlayWidth() + 'px';
+        b.style.width = '1px';
+
+        top.pcrwin = win;
+        a.drawn = true;
+        try {
+            if (window.pcrframeoptions.unlockframe) { a.drawn = false; }
+        } catch (e) {
+        }
+    };
+
+    self.winheight = function () {
+        var winW = 630, winH = 460;
+        if (document.body && document.body.offsetWidth) {
+            winW = document.body.offsetWidth;
+            winH = document.body.offsetHeight;
+        }
+        if (document.compatMode == 'CSS1Compat' &&
+            document.documentElement &&
+            document.documentElement.offsetWidth) {
+            winW = document.documentElement.offsetWidth;
+            winH = document.documentElement.offsetHeight;
+        }
+        if (window.innerWidth && window.innerHeight) {
+            winW = window.innerWidth;
+            winH = window.innerHeight;
+        }
+
+        var out = {};
+        out.width = winW;
+        out.height = winH;
+        return out;
+
+    };
+
+    self.options.title = options.title;
+    self.options.url = options.url;
+    self.options.width = options.width;
+    self.options.height = options.height;
+    self.options.left = options.left;
+    self.options.top = options.top;
+
+    var cb = [];
+    top.pcrwin = null;
+
+    var a = document.createElement('div');
+    a.className = 'pcrdialog';
+    document.body.appendChild(a);
+    window.pcrholdscroll = self.scrollTop();
+
+    cb.push('<table class="pcrdialogbody" id="pcrdialogbody">');
+    cb.push('<tr><td><a href="#" id="pcrdialogclose"><img border="0" alt="Close" src="https://www2.pcrecruiter.net/pcrimg/inc/close.png"></a><div class="pcrdialogtitle">' + self.options.title + '</div></td></tr>');
+    cb.push('<tr><td><iframe id="pcrframe2" name="pcrframe2" src="' + self.options.url + '" frameborder="0" onload="window.parent.postMessage(\'SCROLL||\', \'*\');"></iframe></td></tr>');
+    cb.push('</table>');
+
+    a.innerHTML = cb.join('\n');
+
+    var b = document.getElementById('pcrdialogbody');
+    var f = document.getElementById('pcrframe2');
+    var img = document.getElementById('pcrdialogclose');
+
+
+    self.sizeMe(a, b, f, self);
+    var resizer = window.setInterval(function () { self.sizeMe(a, b, f, self); }, 500);
+
+    var closeiframe = function () {
+        top.pcrcloseiframe = null; window.clearTimeout(resizer); f.src = 'https://www2.pcrecruiter.net/pcrimg/spacer.gif';
+        document.body.removeChild(a); document.body.style.height = 'auto'; self.scrollTop(window.pcrholdscroll); window.pcrholdscroll = null; try { document.body.style.overflowY = self.holdbodyoverflow; document.getElementsByTagName('html')[0].style.overflowY = self.holdhtmloverflow; } catch (e) { }
+    };
+
+    top.pcrcloseiframe = closeiframe;
+    img.onclick = function () { closeiframe(); return false; };
+    try {
+        self.holdbodyoverflow = document.body.style.overflowY;
+        //document.body.style.overflowY = 'hidden';
+        self.holdhtmloverflow = document.getElementsByTagName('html')[0].style.overflowY;
+        document.getElementsByTagName('html')[0].style.overflowY = 'hidden';
+    } catch (e) { }
+};
+//if (document.getElementById('numbermyposts-css')){jQuery('#numbermyposts-css').attr('type','');}

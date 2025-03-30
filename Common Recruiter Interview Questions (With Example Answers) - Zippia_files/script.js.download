@@ -1,0 +1,7 @@
+function returnHideInlineCalloutsWP() {
+    var myVariableJS = WPVars.your_data;
+    return myVariableJS;
+}
+var redirect = function(url){
+    window.location.href = url;
+};
