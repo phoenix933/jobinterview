@@ -1,1 +1,0 @@
-jQuery(document).ready(function(t){t(document).on("gform_post_render",function(o,n){if(n==gf_partnerstack.form_id){t("#gform_"+n).on("submit",function(o){o.preventDefault();function u(){growsumo.data.name=t("#input_"+n+"_18").val();growsumo.data.email=t("#input_"+n+"_20").val();growsumo.data.customer_key=t("#input_"+n+"_20").val();growsumo.createSignup()}u();this.submit()})}})});
